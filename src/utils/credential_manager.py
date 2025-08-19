@@ -14,7 +14,7 @@ from typing import Dict, Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
 class CredentialManager:
@@ -60,11 +60,11 @@ class CredentialManager:
     
     def _derive_key(self, salt: bytes) -> bytes:
         """Derive an encryption key from the machine ID and salt."""
-        kdf = PBKDF2(
+        kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=100000,
+            iterations=100000
         )
         
         key = urlsafe_b64encode(kdf.derive(self._machine_id.encode()))

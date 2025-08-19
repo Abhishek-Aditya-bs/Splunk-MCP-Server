@@ -18,7 +18,7 @@ import platform
 from base64 import urlsafe_b64encode, urlsafe_b64decode
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
 def get_machine_id():
@@ -60,11 +60,11 @@ def derive_key(machine_id: str, salt: bytes = None) -> tuple:
     if salt is None:
         salt = os.urandom(16)
     
-    kdf = PBKDF2(
+    kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=100000,
+        iterations=100000
     )
     
     key = urlsafe_b64encode(kdf.derive(machine_id.encode()))
