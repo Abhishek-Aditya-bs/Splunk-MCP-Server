@@ -1,0 +1,43 @@
+# Splunk MCP Server Configuration
+# Update with your actual values before running
+
+splunk:
+  # Splunk server connection details
+  host: "splunk.yourcompany.com"  # Replace with your Splunk server hostname
+  port: 8089
+  timeout: 30
+  verify_ssl: false
+  
+  # Credentials - Update with values from encrypt_password.py
+  username: "your_username_here"  # Replace with your actual username
+  password_encrypted: "ENCRYPTED_PASSWORD_HERE"  # Run encrypt_password.py to get this
+  password_salt: "SALT_HERE"  # Run encrypt_password.py to get this
+  machine_hash: "HASH_HERE"  # Run encrypt_password.py to get this
+
+# Environment-specific indexes (single index per environment)
+indexes:
+  uat: "index_app_fxs_uat"    # UAT environment index
+  prod: "index_app_fxs"        # PROD environment index
+
+# Query defaults
+query_settings:
+  default_earliest_time: "-30d"  # Default to last 30 days
+  default_latest_time: "now"
+  max_results: 10000
+  page_size: 1000
+  max_execution_time: 300
+  output_mode: "json"
+  include_field_summary: true
+  include_raw_events: true
+
+# Response formatting
+formatting:
+  timestamp_format: "ISO8601"
+  pretty_print: true
+  include_metadata: true
+
+# Logging settings
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  log_queries: true
+  # log_file: "/path/to/splunk_mcp.log"  # Optional: log to file
