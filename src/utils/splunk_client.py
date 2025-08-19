@@ -107,10 +107,14 @@ class SplunkClient:
                 
             except HTTPError as e:
                 last_error = e
-                if e.status == 401:
+                # HTTPError attributes vary by version - handle safely
+                status = getattr(e, 'status', None) or getattr(e, 'code', 'Unknown')
+                message = getattr(e, 'message', None) or getattr(e, 'body', None) or str(e)
+                
+                if status == 401:
                     raise ConnectionError(f"Authentication failed: Invalid credentials")
                 else:
-                    self.logger.warning(f"HTTP error on attempt {attempt + 1}: {e}")
+                    self.logger.warning(f"HTTP error on attempt {attempt + 1}: Status {status}, Message: {message}")
                     
             except socket.timeout:
                 last_error = "Connection timeout"

@@ -188,6 +188,14 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[types.Text
             if not query:
                 raise ValueError("query parameter is required")
             
+            # Fix double-escaping issue: if query contains escaped quotes, unescape them
+            # This handles cases where the MCP client sends already-escaped strings
+            # Check if the string contains literal backslash-quote sequences
+            if '\\"' in query:
+                # Replace literal \" with just "
+                query = query.replace('\\"', '"')
+                logger.info(f"Unescaped query: {query}")
+            
             # Get optional parameters
             earliest_time = arguments.get("earliest_time")
             latest_time = arguments.get("latest_time")
@@ -248,6 +256,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[types.Text
             
     except FileNotFoundError as e:
         # Config file not found
+        import json
         error_response = {
             "status": "error",
             "tool": name,
@@ -255,10 +264,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[types.Text
             "message": "Configuration file not found. Please create config.yaml from config.yaml.example"
         }
         logger.error(f"Configuration error: {e}")
-        return [types.TextContent(type="text", text=str(error_response))]
+        return [types.TextContent(type="text", text=json.dumps(error_response, indent=2))]
         
     except ValueError as e:
         # Validation errors
+        import json
         error_response = {
             "status": "error",
             "tool": name,
@@ -266,10 +276,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[types.Text
             "message": f"Invalid parameters: {str(e)}"
         }
         logger.error(f"Validation error in tool {name}: {e}")
-        return [types.TextContent(type="text", text=str(error_response))]
+        return [types.TextContent(type="text", text=json.dumps(error_response, indent=2))]
         
     except ConnectionError as e:
         # Connection errors
+        import json
         error_response = {
             "status": "error",
             "tool": name,
@@ -277,10 +288,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[types.Text
             "message": "Failed to connect to Splunk. Check your configuration and network."
         }
         logger.error(f"Connection error in tool {name}: {e}")
-        return [types.TextContent(type="text", text=str(error_response))]
+        return [types.TextContent(type="text", text=json.dumps(error_response, indent=2))]
         
     except Exception as e:
         # General errors
+        import json
         error_response = {
             "status": "error",
             "tool": name,
@@ -288,7 +300,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> Sequence[types.Text
             "message": f"Failed to execute {name}: {str(e)}"
         }
         logger.error(f"Error in tool {name}: {e}", exc_info=True)
-        return [types.TextContent(type="text", text=str(error_response))]
+        return [types.TextContent(type="text", text=json.dumps(error_response, indent=2))]
 
 
 @app.list_resources()
