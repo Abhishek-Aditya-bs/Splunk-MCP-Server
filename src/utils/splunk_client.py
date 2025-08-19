@@ -29,6 +29,8 @@ class SplunkClient:
         self.config_reader = get_config_reader()
         self._connections = {}
         self._last_query_info = {}
+        self._connection_timestamps = {}  # Track when connections were created
+        self._connection_lifetime = 3600  # 1 hour in seconds
     
     def _resolve_hostname(self, hostname: str) -> str:
         """
@@ -133,6 +135,7 @@ class SplunkClient:
     def get_connection(self, force_new: bool = False) -> client.Service:
         """
         Get a connection to Splunk, creating new one if needed.
+        Connections are automatically refreshed after 1 hour to prevent timeout issues.
         
         Args:
             force_new: Force creation of new connection
@@ -140,15 +143,26 @@ class SplunkClient:
         Returns:
             Splunk Service object
         """
+        current_time = time.time()
+        
+        # Check if we need to refresh the connection due to age
+        if 'main' in self._connection_timestamps:
+            connection_age = current_time - self._connection_timestamps['main']
+            if connection_age > self._connection_lifetime:
+                self.logger.info(f"Connection is {connection_age:.0f} seconds old, refreshing...")
+                force_new = True
+        
         if force_new or 'main' not in self._connections:
             self._connections['main'] = self._create_connection()
+            self._connection_timestamps['main'] = current_time
         
         # Test if connection is still alive
         try:
             self._connections['main'].apps.list()
-        except Exception:
-            self.logger.info(f"Connection expired, reconnecting...")
+        except Exception as e:
+            self.logger.info(f"Connection test failed ({e}), reconnecting...")
             self._connections['main'] = self._create_connection()
+            self._connection_timestamps['main'] = current_time
         
         return self._connections['main']
     
@@ -293,10 +307,12 @@ class SplunkClient:
             }
             
         except HTTPError as e:
+            # HTTPError might have 'message' or 'body' attribute depending on version
+            error_msg = getattr(e, 'message', None) or getattr(e, 'body', str(e))
             return {
                 'status': 'error',
                 'query': query,
-                'error': f"HTTP Error {e.status}: {e.message}",
+                'error': f"HTTP Error {getattr(e, 'status', 'Unknown')}: {error_msg}",
                 'error_type': 'http_error'
             }
             

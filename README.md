@@ -319,6 +319,43 @@ When queries return more than the configured `page_size` (default: 1000), the se
 3. **Machine Binding**: Encrypted passwords only work on the machine where they were encrypted
 4. **Secure Your Config**: Add `config.yaml` to `.gitignore` and never commit it
 
+## Session Management
+
+### Connection Lifetime
+- **Initial Authentication**: Uses username/password from config
+- **Connection Reuse**: Connections are reused for up to 1 hour
+- **Automatic Refresh**: After 1 hour, a new connection is automatically created
+- **Session Testing**: Each query tests the connection and reconnects if needed
+- **No Token Expiry**: Using username/password auth, there's no token to expire
+
+### Query Guidelines for AI Assistants
+
+When using with GitHub Copilot or other AI assistants, ensure queries:
+
+1. **Escape Special Characters in String Literals**:
+   ```spl
+   # Correct:
+   index=app_fxs "Error while loading cache"
+   
+   # Incorrect (will cause parsing errors):
+   index=app_fxs ERROR c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl
+   ```
+
+2. **Use Proper Field Searches**:
+   ```spl
+   # For exact phrase matching:
+   index=app_fxs "ERROR c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl"
+   
+   # For field-based search:
+   index=app_fxs logger="c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl" level=ERROR
+   ```
+
+3. **Count Occurrences**:
+   ```spl
+   index=app_fxs "Error while loading afxFeatureToggles cache" 
+   | stats count
+   ```
+
 ## Troubleshooting
 
 ### Common Issues
