@@ -123,22 +123,39 @@ Verify connectivity to Splunk server.
 ```
 
 #### 3. **execute_query**
-Execute SPL queries. Use the index from `get_index_for_environment`. To filter by sourcetype, first use `get_sourcetypes` to discover available sourcetypes.
+Execute SPL queries. The 'search' command is automatically prepended when needed, so you can start queries directly with 'index='. Use the index from `get_index_for_environment`. To filter by sourcetype, first use `get_sourcetypes` to discover available sourcetypes.
 
 **Parameters:**
-- `query`: SPL query string (include the index)
+- `query`: SPL query string (can start with 'index=' directly)
 - `earliest_time` (optional): Start time (default: "-30d")
 - `latest_time` (optional): End time (default: "now")
 - `max_results` (optional): Maximum results
 
-**Example:**
+**Examples:**
 ```json
+// Simple search - 'search' is auto-prepended
 {
   "tool": "execute_query",
   "arguments": {
-    "query": "index=index_app_fxs sourcetype=accessfx_trade_server_ext order_id=ABC",
-    "earliest_time": "-2d",
-    "latest_time": "now"
+    "query": "index=app_fxs \"Error message\"",
+    "earliest_time": "-2d"
+  }
+}
+
+// With sourcetype filter
+{
+  "tool": "execute_query",
+  "arguments": {
+    "query": "index=app_fxs sourcetype=trade_server order_id=ABC",
+    "earliest_time": "-7d"
+  }
+}
+
+// Pipe command (no 'search' needed)
+{
+  "tool": "execute_query",
+  "arguments": {
+    "query": "| metadata type=sourcetypes index=app_fxs"
   }
 }
 ```
@@ -186,10 +203,11 @@ List available sourcetypes from Splunk, optionally filtered by index. Use this t
    ```
    Tool: execute_query
    Input: {
-     "query": "index=index_app_fxs sourcetype=trade_server order_id=ABC123 | head 100",
+     "query": "index=app_fxs sourcetype=trade_server order_id=ABC123 | head 100",
      "earliest_time": "-2d"
    }
    ```
+   Note: The 'search' command is automatically prepended when needed
 
 4. **AI analyzes the JSON response** to identify issues
 
@@ -330,30 +348,38 @@ When queries return more than the configured `page_size` (default: 1000), the se
 
 ### Query Guidelines for AI Assistants
 
-When using with GitHub Copilot or other AI assistants, ensure queries:
+When using with GitHub Copilot or other AI assistants:
 
-1. **Escape Special Characters in String Literals**:
+1. **No Need to Add 'search' Prefix**:
    ```spl
-   # Correct:
-   index=app_fxs "Error while loading cache"
-   
-   # Incorrect (will cause parsing errors):
-   index=app_fxs ERROR c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl
+   # The server automatically adds 'search' when needed
+   index=app_fxs "Error message"  # ✓ Works correctly
+   search index=app_fxs "Error"   # ✓ Also works
+   | stats count                   # ✓ Pipe commands work directly
    ```
 
-2. **Use Proper Field Searches**:
+2. **Quotes in Queries Are Handled Automatically**:
+   ```spl
+   # Complex queries with quotes are automatically fixed
+   index=app_fxs "IBM MQ call failed with compcode '2' ('MQCC_FAILED')"
+   ```
+
+3. **Use Proper Field Searches for Complex Strings**:
    ```spl
    # For exact phrase matching:
    index=app_fxs "ERROR c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl"
    
-   # For field-based search:
+   # For field-based search (recommended for class names):
    index=app_fxs logger="c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl" level=ERROR
    ```
 
-3. **Count Occurrences**:
+4. **Count Occurrences and Statistics**:
    ```spl
    index=app_fxs "Error while loading afxFeatureToggles cache" 
    | stats count
+   
+   # Find last occurrence
+   index=app_fxs "error message" | sort - _time | head 1
    ```
 
 ## Troubleshooting

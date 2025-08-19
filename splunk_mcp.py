@@ -93,13 +93,13 @@ async def list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="execute_query",
-            description="Execute a Splunk SPL query. Use the index from get_index_for_environment. To filter by sourcetype, first use get_sourcetypes to find available sourcetypes, then add 'sourcetype=your_sourcetype' to your query. Example: 'index=index_app_fxs sourcetype=trade_server order_id=ABC'. Supports time ranges and pagination.",
+            description="Execute a Splunk SPL query. The 'search' command will be automatically prepended if needed. You can start queries with 'index=' directly. Examples: 'index=app_fxs error', 'index=app_fxs sourcetype=trade_server order_id=ABC', or pipe commands like '| metadata type=sourcetypes'. Use get_index_for_environment to get the correct index name first.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "SPL query to execute (e.g., 'index=index_app_fxs sourcetype=accessfx_trade_server_ext order_id=ABC')"
+                        "description": "SPL query to execute. Can start with 'index=' directly, or use pipe commands like '| stats'. The 'search' command is auto-prepended when needed. Examples: 'index=app_fxs \"error message\"', 'index=app_fxs | head 10'"
                     },
                     "earliest_time": {
                         "type": "string",

@@ -243,8 +243,17 @@ class SplunkClient:
                 timeout = query_settings.get('max_execution_time', 300)
             
             # Ensure query starts with 'search' if it doesn't have a generating command
-            if not any(query.strip().startswith(cmd) for cmd in ['search', '|', 'index']):
-                query = f"search {query}"
+            # Note: 'index=' is not a command, it's a field filter that needs 'search' prepended
+            query_stripped = query.strip()
+            if not any(query_stripped.startswith(cmd) for cmd in ['search ', '|', 'search\t']):
+                # If query starts with index=, it needs 'search' prepended
+                if query_stripped.startswith('index='):
+                    query = f"search {query}"
+                    self.logger.debug(f"Prepended 'search' to index query")
+                # Also prepend 'search' for other non-command queries
+                elif not query_stripped.startswith('|'):
+                    query = f"search {query}"
+                    self.logger.debug(f"Prepended 'search' to query")
             
             self.logger.info(f"Executing query: {query[:100]}...")
             
