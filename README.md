@@ -4,12 +4,12 @@ A secure Model Context Protocol (MCP) server for executing Splunk queries with e
 
 ## Features
 
-- 🔐 **Secure Credential Management**: Machine-specific encryption ensures passwords can only be decrypted on the authorized machine
-- 🌐 **Environment-Specific Indexes**: Same credentials for UAT/PROD with different index mappings
-- 📊 **AI-Optimized Output**: JSON responses formatted for optimal consumption by AI assistants like GitHub Copilot
-- 📄 **Pagination Support**: Handle large result sets with automatic pagination guidance
-- 🔄 **Automatic Retry Logic**: Built-in connection retry with exponential backoff
-- 🔍 **Dynamic Discovery**: Automatically discover available sourcetypes and indexes
+- **Secure Credential Management**: Machine-specific encryption ensures passwords can only be decrypted on the authorized machine
+- **Environment-Specific Indexes**: UAT/PROD environments with different index mappings
+- **AI-Optimized Output**: JSON responses formatted for optimal consumption by MCP clients and AI assistants
+- **Pagination Support**: Handle large result sets with automatic pagination guidance
+- **Automatic Retry Logic**: Built-in connection retry with exponential backoff
+- **Dynamic Discovery**: Automatically discover available sourcetypes and indexes
 
 ## Installation
 
@@ -43,8 +43,8 @@ A secure Model Context Protocol (MCP) server for executing Splunk queries with e
    ```
    
    Follow the prompts to:
-   - Enter your Splunk username (same for UAT and PROD)
-   - Enter your Splunk password (same for UAT and PROD)
+   - Enter your Splunk username
+   - Enter your Splunk password
    - Copy the encrypted output to your `config.yml`
 
 5. **Test the connection**
@@ -72,8 +72,8 @@ splunk:
   machine_hash: "xxx"        # From encrypt_password.py
 
 indexes:
-  uat: "index_app_fxs_uat"   # UAT environment index
-  prod: "index_app_fxs"       # PROD environment index
+  uat: "your_app_uat_index"   # UAT environment index
+  prod: "your_app_prod_index"  # PROD environment index
 
 query_settings:
   default_earliest_time: "-30d"  # Default: last 30 days
@@ -107,7 +107,7 @@ Get the index name for UAT or PROD environment. Use this first to determine whic
   }
 }
 ```
-Returns: `{"index": "index_app_fxs"}`
+Returns: `{"index": "your_app_prod_index"}`
 
 #### 2. **check_connection**
 Verify connectivity to Splunk server.
@@ -137,7 +137,7 @@ Execute SPL queries. The 'search' command is automatically prepended when needed
 {
   "tool": "execute_query",
   "arguments": {
-    "query": "index=app_fxs \"Error message\"",
+    "query": "index=main \"Error message\"",
     "earliest_time": "-2d"
   }
 }
@@ -146,7 +146,7 @@ Execute SPL queries. The 'search' command is automatically prepended when needed
 {
   "tool": "execute_query",
   "arguments": {
-    "query": "index=app_fxs sourcetype=trade_server order_id=ABC",
+    "query": "index=main sourcetype=application_logs status=error",
     "earliest_time": "-7d"
   }
 }
@@ -155,7 +155,7 @@ Execute SPL queries. The 'search' command is automatically prepended when needed
 {
   "tool": "execute_query",
   "arguments": {
-    "query": "| metadata type=sourcetypes index=app_fxs"
+    "query": "| metadata type=sourcetypes index=main"
   }
 }
 ```
@@ -176,34 +176,34 @@ List available sourcetypes from Splunk, optionally filtered by index. Use this t
 {
   "tool": "get_sourcetypes",
   "arguments": {
-    "index": "index_app_fxs"
+    "index": "main"
   }
 }
 ```
 
 ## Workflow Example
 
-### Finding Failed Orders in Production
+### Finding Failed Transactions in Production
 
 1. **Get PROD index:**
    ```
    Tool: get_index_for_environment
    Input: {"environment": "prod"}
-   Output: {"index": "index_app_fxs"}
+   Output: {"index": "your_app_prod_index"}
    ```
 
 2. **Get available sourcetypes (optional):**
    ```
    Tool: get_sourcetypes
-   Input: {"index": "index_app_fxs"}
-   Output: {"sourcetypes": ["trade_server", "risk_engine", ...]}
+   Input: {"index": "your_app_prod_index"}
+   Output: {"sourcetypes": ["application_logs", "system_logs", ...]}
    ```
 
 3. **Execute search query:**
    ```
    Tool: execute_query
    Input: {
-     "query": "index=app_fxs sourcetype=trade_server order_id=ABC123 | head 100",
+     "query": "index=your_app_prod_index sourcetype=application_logs transaction_id=TXN123 | head 100",
      "earliest_time": "-2d"
    }
    ```
@@ -346,40 +346,40 @@ When queries return more than the configured `page_size` (default: 1000), the se
 - **Session Testing**: Each query tests the connection and reconnects if needed
 - **No Token Expiry**: Using username/password auth, there's no token to expire
 
-### Query Guidelines for AI Assistants
+### Query Guidelines for MCP Clients
 
-When using with GitHub Copilot or other AI assistants:
+When using with MCP clients and AI assistants:
 
 1. **No Need to Add 'search' Prefix**:
    ```spl
    # The server automatically adds 'search' when needed
-   index=app_fxs "Error message"  # ✓ Works correctly
-   search index=app_fxs "Error"   # ✓ Also works
-   | stats count                   # ✓ Pipe commands work directly
+   index=main "Error message"     # Works correctly
+   search index=main "Error"      # Also works
+   | stats count                   # Pipe commands work directly
    ```
 
 2. **Quotes in Queries Are Handled Automatically**:
    ```spl
    # Complex queries with quotes are automatically fixed
-   index=app_fxs "IBM MQ call failed with compcode '2' ('MQCC_FAILED')"
+   index=main "Database connection failed with error code '1045' ('Access denied')"
    ```
 
 3. **Use Proper Field Searches for Complex Strings**:
    ```spl
    # For exact phrase matching:
-   index=app_fxs "ERROR c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl"
+   index=main "ERROR com.example.app.services.UserService"
    
    # For field-based search (recommended for class names):
-   index=app_fxs logger="c.j.c.f.a.w.f.i.c.i.CacheAfxFeatureToggleImpl" level=ERROR
+   index=main logger="com.example.app.services.UserService" level=ERROR
    ```
 
 4. **Count Occurrences and Statistics**:
    ```spl
-   index=app_fxs "Error while loading afxFeatureToggles cache" 
+   index=main "Error while loading configuration" 
    | stats count
    
    # Find last occurrence
-   index=app_fxs "error message" | sort - _time | head 1
+   index=main "error message" | sort - _time | head 1
    ```
 
 ## Troubleshooting
@@ -414,9 +414,29 @@ logging:
   log_file: "splunk_mcp.log"
 ```
 
-## Integration with GitHub Copilot
+## MCP Client Integration
 
-This MCP server is optimized for use with GitHub Copilot and other AI assistants:
+### Configuration for MCP Clients
+
+To integrate this server with any MCP client, add the following configuration to your MCP client settings:
+
+```json
+{
+  "mcpServers": {
+    "splunk": {
+      "command": "python",
+      "args": ["/path/to/your/splunk_mcp.py"],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+Replace `/path/to/your/splunk_mcp.py` with the absolute path to the `splunk_mcp.py` file.
+
+### Features for MCP Clients
+
+This MCP server is optimized for use with MCP clients and AI assistants:
 
 1. **Structured JSON responses** for easy parsing
 2. **Field summaries** to understand data structure
