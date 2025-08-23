@@ -23,7 +23,7 @@ A secure Model Context Protocol (MCP) server for executing Splunk queries with e
 
 1. **Clone the repository**
    ```bash
-   cd /Users/abhishek_aditya/code/Splunk-MCP-Server
+   git clone <repository-url>
    ```
 
 2. **Install dependencies**
